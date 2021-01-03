@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <flow name="userprofile-proc-api-main">
+        <http:listener config-ref="userprofile-proc-api-httpListenerConfig" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <ee:transform doc:name="Init Vars" doc:id="3926b9c4-007e-431f-9226-0a76b8c412f1">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="commonHeaders"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"correlationId": if(isEmpty(attributes.headers.'x-correlationid')) uuid() else attributes.headers.'x-correlationid',
+	"code": attributes.headers.'x-code'
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<apikit:router config-ref="userprofile-proc-api-config"/>
+			<error-handler ref="apikit-error-handler"/>
+    </flow>
+    <flow name="userprofile-proc-api-console">
+        <http:listener config-ref="userprofile-proc-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="userprofile-proc-api-config"/>
+        	<error-handler ref="apikit-error-handler"/>
+    </flow>
+    <flow name="get:\users:userprofile-proc-api-config">
+        <flow-ref doc:name="Invoke Get User" doc:id="6fefd8c2-d14e-4dd4-b61b-3656b3156737" name="get-user-flow"/>
+    </flow>
+    <flow name="get:\users\(username):userprofile-proc-api-config">
+        <flow-ref doc:name="Invoke Get User By Username" doc:id="a565b925-8c8f-48bf-825c-d5a9c1075b48" name="get-user-byusername-flow"/>
+    </flow>
+    <flow name="post:\users:application\json:userprofile-proc-api-config">
+        <flow-ref doc:name="Invoke Post User" doc:id="7cec1c48-2159-461d-8b60-5e92a56c125a" name="post-user-flow"/>
+    </flow>
+</mule>
